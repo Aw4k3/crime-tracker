@@ -216,7 +216,7 @@
                         <i class="far fa-clock"></i> ${new Date(d.Date).toLocaleDateString()} • ${d.Address}
                     </span>`;
                 el.onclick = () => {
-                    map.setView([d.Lat, d.Long], 14);
+                    map.setView([d.Latitude, d.Longitude], 14);
                 };
                 container.appendChild(el);
             });
@@ -224,4 +224,5 @@
     </script>
 </body>
 </html>
+
 
