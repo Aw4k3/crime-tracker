@@ -86,22 +86,24 @@
     </div>
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     
     <script>
         // --- CONFIGURATION ---
-        // 1. Paste your Google CSV link here:
         const BASE_LINK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRhqyqUla2HyfJrO3I0k-i513-8A44ds7evsfZI4icLybMO66cdxC-o-mWp54fKhra8nzXbFH3O4i7_/pub?output=csv";
-        
-        // 2. FORCE REFRESH + PROXY
         const FRESH_LINK = BASE_LINK + "&t=" + new Date().getTime();
         const SHEET_URL = "https://corsproxy.io/?" + encodeURIComponent(FRESH_LINK);
 
-        // --- CUSTOM CATEGORIES & EMOJIS ---
-        // The keys here must match what is in your Google Sheet "Category" column
+        // --- MAP SETUP ---
+        const map = L.map('map', {zoomControl: false}).setView([23.8103, 90.4125], 7);
+        L.control.zoom({position: 'topright'}).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+        let allData = [];
+        let markers = L.layerGroup().addTo(map);
+
         const categories = {
-            'All': { label: 'All Crimes', icon: '📋', col: '#6b7280' },
             'Murder': { label: 'Homicide/Murder', icon: '💀', col: '#ef4444' },
             'Rape': { label: 'Sexual Assault/Rape', icon: '🚨', col: '#ec4899' },
             'Robbery': { label: 'Robbery/Theft', icon: '💰', col: '#f59e0b' },
@@ -112,19 +114,25 @@
             'Other': { label: 'Other', icon: '⚠️', col: '#9ca3af' }
         };
 
-        const map = L.map('map', {zoomControl: false}).setView([23.8103, 90.4125], 7);
-        L.control.zoom({position: 'topright'}).addTo(map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-        let allData = [];
-        let markers = L.layerGroup().addTo(map);
-
-        // --- SAFE DATE PARSER ---
-        // Helps fix "Invalid Date" errors
-        function parseDate(dateStr) {
+        // --- SMART DATE PARSER (The Fix for Invalid Date) ---
+        function parseSmartDate(dateStr) {
             if (!dateStr) return null;
-            const d = new Date(dateStr);
-            return isNaN(d) ? null : d;
+            
+            // 1. Try standard conversion first
+            let d = new Date(dateStr);
+            if (!isNaN(d.getTime())) return d;
+
+            // 2. If that fails, try parsing "DD/MM/YYYY" manually (Bangla Format)
+            // Example: "17/02/2026" or "17-02-2026"
+            const parts = dateStr.match(/(\d+)[/-](\d+)[/-](\d+)/);
+            if (parts) {
+                // parts[1] is Day, parts[2] is Month, parts[3] is Year
+                // We create new Date(Year, Month-1, Day)
+                d = new Date(parts[3], parts[2] - 1, parts[1]);
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            return null; // Give up
         }
 
         function formatDateDisplay(dateObj) {
@@ -139,21 +147,39 @@
                 const raw = results.data;
                 if(raw.length === 0) return;
 
-                // Auto-detect columns
                 const keys = Object.keys(raw[0]);
-                const latKey = keys.find(k => k.toLowerCase().startsWith("lat"));
-                const lonKey = keys.find(k => k.toLowerCase().startsWith("lon"));
+                const findKey = (str) => keys.find(k => k.toLowerCase().trim().includes(str));
+
+                // Auto-detect columns (Works even with "Catagory" or "Lat")
+                const latKey = findKey("lat");
+                const lonKey = findKey("lon");
+                const titleKey = findKey("title");
+                const dateKey = findKey("date");
+                const catKey = findKey("cat"); // Catches "Category", "Catagory", "Cat"
+                const addrKey = findKey("address");
+                const urlKey = findKey("url");
 
                 if (latKey && lonKey) {
-                    allData = raw.filter(r => r[latKey] && r[lonKey]).map(r => ({
-                        ...r,
-                        Latitude: parseFloat(r[latKey]),
-                        Longitude: parseFloat(r[lonKey]),
-                        // Store a clean Date Object for sorting
-                        DateObj: parseDate(r.Date),
-                        // Normalize Category (Default to 'Other' if not found)
-                        Category: categories[r.Category] ? r.Category : 'Other'
-                    }));
+                    allData = raw.filter(r => r[latKey] && r[lonKey]).map(r => {
+                        // Clean the category name (remove spaces)
+                        let cleanCat = r[catKey] ? r[catKey].trim() : 'Other';
+                        
+                        // Capitalize first letter just in case (murder -> Murder)
+                        cleanCat = cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1);
+
+                        // Parse the date properly
+                        const cleanDate = parseSmartDate(r[dateKey]);
+
+                        return {
+                            Latitude: parseFloat(r[latKey]),
+                            Longitude: parseFloat(r[lonKey]),
+                            Title: r[titleKey] || "Untitled Incident",
+                            DateObj: cleanDate,
+                            Category: categories[cleanCat] ? cleanCat : 'Other',
+                            Address: r[addrKey] || "Bangladesh",
+                            SourceUrl: r[urlKey] || "#"
+                        };
+                    });
 
                     // Sort: Newest First
                     allData.sort((a, b) => (b.DateObj || 0) - (a.DateObj || 0));
@@ -170,16 +196,14 @@
             renderFilters(data);
         }
 
-        // --- FILTER BY DATE ---
         function filterByDate() {
-            const input = document.getElementById('date-picker').value; // YYYY-MM-DD
+            const input = document.getElementById('date-picker').value; 
             if (!input) return init(allData);
 
             const filtered = allData.filter(d => {
                 if (!d.DateObj) return false;
-                // Convert both to YYYY-MM-DD for safe comparison
-                const rowDate = d.DateObj.toISOString().split('T')[0]; 
-                return rowDate === input;
+                // Convert both to YYYY-MM-DD
+                return d.DateObj.toISOString().split('T')[0] === input;
             });
 
             renderMap(filtered);
@@ -199,7 +223,6 @@
             renderStats(filtered);
         }
 
-        // --- RENDERERS ---
         function renderMap(data) {
             markers.clearLayers();
             data.forEach(d => {
@@ -213,14 +236,13 @@
 
                 const marker = L.marker([d.Latitude, d.Longitude], {icon: icon}).addTo(markers);
                 
-                // POPUP CONTENT (Description Removed)
                 marker.bindPopup(`
                     <div style="min-width:200px;">
                         <b style="font-size:14px;">${d.Title}</b><br>
                         <div style="margin-top:5px; font-size:12px; color:#555;">
                             ${style.icon} ${style.label}<br>
                             📅 ${formatDateDisplay(d.DateObj)}<br>
-                            📍 ${d.Address || "Bangladesh"}
+                            📍 ${d.Address}
                         </div>
                         <a href="${d.SourceUrl}" target="_blank" style="display:block; margin-top:8px; text-decoration:none; color:#3b82f6; font-weight:700; font-size:12px;">Read Full News →</a>
                     </div>
@@ -240,7 +262,6 @@
             container.innerHTML = `<button class="filter-btn active" onclick="resetAll()"><span>📋 All Crimes</span> <span>${allData.length}</span></button>`;
             
             Object.keys(categories).forEach(key => {
-                if (key === 'All') return;
                 if (counts[key]) {
                     const c = categories[key];
                     container.innerHTML += `<button class="filter-btn" onclick="filterCategory('${key}')"><span>${c.icon} ${c.label}</span> <span>${counts[key]}</span></button>`;
@@ -258,7 +279,7 @@
                 el.style.borderLeftColor = style.col;
                 el.innerHTML = `
                     <h4>${d.Title}</h4>
-                    <span>${style.icon} ${formatDateDisplay(d.DateObj)} • ${d.Address || "Bangladesh"}</span>
+                    <span>${style.icon} ${formatDateDisplay(d.DateObj)} • ${d.Address}</span>
                 `;
                 el.onclick = () => {
                     map.setView([d.Latitude, d.Longitude], 15);
@@ -275,3 +296,4 @@
     </script>
 </body>
 </html>
+
