@@ -2,13 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Crime Map BD</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -18,39 +16,50 @@
         }
         body { margin: 0; padding: 0; font-family: 'Hind Siliguri', 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; background: #000; }
         
-        /* SIDEBAR */
+        /* --- DESKTOP LAYOUT (Default) --- */
         #sidebar { width: 350px; background: var(--bg-sidebar); color: var(--text-main); display: flex; flex-direction: column; border-right: 1px solid var(--border); z-index: 2000; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
-        .header { padding: 20px; border-bottom: 1px solid var(--border); background: #0f172a; }
-        .header h1 { font-size: 1.2rem; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; }
+        #map { flex: 1; height: 100%; }
         
-        .content { flex: 1; overflow-y: auto; padding: 20px; }
+        /* --- MOBILE LAYOUT (Phones) --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column-reverse; } /* Sidebar moves to bottom */
+            #sidebar { 
+                width: 100%; 
+                height: 45vh; /* Takes up bottom 45% of screen */
+                border-right: none; 
+                border-top: 2px solid var(--border);
+            }
+            #map { height: 55vh; } /* Map takes top 55% */
+            .header h1 { font-size: 1rem; }
+        }
+
+        .header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: #0f172a; }
+        .header h1 { margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px; color: white; font-size: 1.1rem; }
+        
+        .content { flex: 1; overflow-y: auto; padding: 15px; }
         
         /* DATE PICKER */
-        .date-control { margin-bottom: 20px; background: var(--bg-card); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
-        .date-control label { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; display: block; margin-bottom: 8px; font-weight: bold; letter-spacing: 0.05em; }
-        .date-input { width: 100%; background: #111827; border: 1px solid var(--border); color: white; padding: 10px; border-radius: 4px; font-family: inherit; box-sizing: border-box; }
-        .date-input:focus { outline: none; border-color: var(--accent); }
-
-        /* STATS */
-        .stats-box { background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; text-align: center; }
-        .stats-num { font-size: 2.5rem; font-weight: 700; display: block; line-height: 1; margin-bottom: 5px; }
+        .date-control { margin-bottom: 15px; background: var(--bg-card); padding: 10px; border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .date-control input { flex: 1; background: #111827; border: 1px solid var(--border); color: white; padding: 8px; border-radius: 4px; font-family: inherit; }
+        .reset-btn { background: var(--bg-sidebar); border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
         
-        /* FILTERS */
-        .filter-btn { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: transparent; border: 1px solid transparent; color: var(--text-sub); cursor: pointer; border-radius: 6px; margin-bottom: 5px; transition: all 0.2s; font-family: inherit; }
+        /* STATS & FILTERS */
+        .stats-box { background: var(--bg-card); padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; text-align: center; }
+        .stats-num { font-size: 1.8rem; font-weight: 700; display: block; line-height: 1; color: white; }
+        
+        .filter-btn { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: transparent; border: 1px solid transparent; color: var(--text-sub); cursor: pointer; border-radius: 6px; margin-bottom: 4px; transition: all 0.2s; font-size: 0.85rem; }
         .filter-btn:hover { background: rgba(255,255,255,0.05); }
         .filter-btn.active { background: rgba(59, 130, 246, 0.15); border-color: var(--accent); color: white; font-weight: 600; }
         
-        /* LIST CARDS */
-        .card { background: var(--bg-card); padding: 15px; margin-bottom: 10px; border-radius: 6px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; }
-        .card:hover { background: #2d3748; transform: translateX(5px); }
-        .card h4 { margin: 0 0 5px 0; font-size: 0.95rem; line-height: 1.4; font-weight: 600; }
-        .card span { font-size: 0.75rem; color: var(--text-sub); display: block; margin-top: 5px; }
+        /* CARDS */
+        .card { background: var(--bg-card); padding: 12px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; border-left: 4px solid transparent; }
+        .card:hover { background: #2d3748; }
+        .card h4 { margin: 0 0 4px 0; font-size: 0.9rem; font-weight: 600; color: #e5e7eb; }
+        .card span { font-size: 0.75rem; color: #9ca3af; }
 
-        /* MAP */
-        #map { flex: 1; height: 100%; }
-        
-        /* MARKERS */
-        .custom-marker { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; box-shadow: 0 3px 6px rgba(0,0,0,0.4); border: 2px solid white; }
+        /* POPUP & MARKER */
+        .custom-marker { display: flex; align-items: center; justify-content: center; border-radius: 50%; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid white; font-size: 12px; }
+        .leaflet-popup-content-wrapper { border-radius: 8px; font-family: 'Hind Siliguri', sans-serif; }
     </style>
 </head>
 <body>
@@ -59,23 +68,19 @@
             <h1><i class="fas fa-map-marked-alt" style="color:#ef4444"></i> Crime Map BD</h1>
         </div>
         <div class="content">
-            
             <div class="date-control">
-                <label><i class="far fa-calendar-alt"></i> Filter by Date</label>
-                <input type="date" id="date-picker" class="date-input" onchange="filterByDate()">
+                <input type="date" id="date-picker" onchange="filterByDate()">
+                <button class="reset-btn" onclick="resetAll()"><i class="fas fa-sync-alt"></i></button>
             </div>
 
             <div class="stats-box">
                 <span class="stats-num" id="total-count">0</span>
-                <span style="font-size:0.8rem; text-transform:uppercase; color:var(--text-sub); letter-spacing: 0.05em;">Visible Incidents</span>
+                <span style="font-size:0.7rem; text-transform:uppercase; color:var(--text-sub);">Visible Incidents</span>
             </div>
             
-            <div style="font-size:0.75rem; font-weight:700; color:var(--text-sub); margin-bottom:10px; letter-spacing: 0.05em;">FILTER BY TYPE</div>
             <div id="filters"></div>
             
-            <hr style="border:0; border-top:1px solid var(--border); margin:20px 0">
-            
-            <div style="font-size:0.75rem; font-weight:700; color:var(--text-sub); margin-bottom:10px; letter-spacing: 0.05em;">LATEST REPORTS</div>
+            <hr style="border:0; border-top:1px solid var(--border); margin:15px 0">
             <div id="list"></div>
         </div>
     </div>
@@ -86,54 +91,76 @@
     
     <script>
         // --- CONFIGURATION ---
-        // 1. Paste your Google CSV link inside the quotes below:
+        // 1. Paste your Google CSV link here:
         const BASE_LINK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRhqyqUla2HyfJrO3I0k-i513-8A44ds7evsfZI4icLybMO66cdxC-o-mWp54fKhra8nzXbFH3O4i7_/pub?output=csv";
         
-        // 2. FORCE REFRESH: Adds a timestamp so you get the NEWEST data
+        // 2. FORCE REFRESH + PROXY
         const FRESH_LINK = BASE_LINK + "&t=" + new Date().getTime();
-        
-        // 3. PROXY WRAPPER (NEW: Using corsproxy.io because allorigins is down)
         const SHEET_URL = "https://corsproxy.io/?" + encodeURIComponent(FRESH_LINK);
-        // --- MAP SETUP ---
+
+        // --- CUSTOM CATEGORIES & EMOJIS ---
+        // The keys here must match what is in your Google Sheet "Category" column
+        const categories = {
+            'All': { label: 'All Crimes', icon: '📋', col: '#6b7280' },
+            'Murder': { label: 'Homicide/Murder', icon: '💀', col: '#ef4444' },
+            'Rape': { label: 'Sexual Assault/Rape', icon: '🚨', col: '#ec4899' },
+            'Robbery': { label: 'Robbery/Theft', icon: '💰', col: '#f59e0b' },
+            'Assault': { label: 'Assault/Battery', icon: '⚔️', col: '#f97316' },
+            'Road Accident': { label: 'Road Accident', icon: '🚗', col: '#3b82f6' },
+            'Kidnapping': { label: 'Kidnapping', icon: '👤', col: '#8b5cf6' },
+            'Drug Offense': { label: 'Drug Offense', icon: '💊', col: '#10b981' },
+            'Other': { label: 'Other', icon: '⚠️', col: '#9ca3af' }
+        };
+
         const map = L.map('map', {zoomControl: false}).setView([23.8103, 90.4125], 7);
         L.control.zoom({position: 'topright'}).addTo(map);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap | Data: Google Alerts'
-        }).addTo(map);
-
-        // --- ICONS & COLORS ---
-        const icons = {
-            'Murder': {col: '#ef4444', icon: 'fa-skull'},        // Red
-            'Rape': {col: '#ec4899', icon: 'fa-exclamation-triangle'}, // Pink
-            'Robbery': {col: '#f59e0b', icon: 'fa-mask'},         // Orange
-            'Road Accident': {col: '#3b82f6', icon: 'fa-car-crash'}, // Blue
-            'Kidnapping': {col: '#8b5cf6', icon: 'fa-user-secret'}, // Purple
-            'Drug Offense': {col: '#10b981', icon: 'fa-cannabis'},  // Green
-            'Assault': {col: '#f97316', icon: 'fa-fist-raised'},    // Dark Orange
-            'Other': {col: '#6b7280', icon: 'fa-info'}            // Grey
-        };
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
         let allData = [];
         let markers = L.layerGroup().addTo(map);
 
+        // --- SAFE DATE PARSER ---
+        // Helps fix "Invalid Date" errors
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            const d = new Date(dateStr);
+            return isNaN(d) ? null : d;
+        }
+
+        function formatDateDisplay(dateObj) {
+            if (!dateObj) return "Unknown Date";
+            return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
         // --- LOAD DATA ---
         Papa.parse(SHEET_URL, {
-            download: true, header: true,
+            download: true, header: true, skipEmptyLines: true,
             complete: (results) => {
-                console.log("Raw Data Found:", results.data.length); // Debug log
-                
-                // Filter: Must have Latitude AND Longitude
-                allData = results.data.filter(r => r.Latitude && r.Longitude);
-                
-                // Sort: Newest date first
-                allData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-                
-                console.log("Valid Data (with Lat/Long):", allData.length); // Debug log
-                
-                // Initialize the app
-                init(allData);
-            },
-            error: (err) => console.error("Error loading CSV:", err)
+                const raw = results.data;
+                if(raw.length === 0) return;
+
+                // Auto-detect columns
+                const keys = Object.keys(raw[0]);
+                const latKey = keys.find(k => k.toLowerCase().startsWith("lat"));
+                const lonKey = keys.find(k => k.toLowerCase().startsWith("lon"));
+
+                if (latKey && lonKey) {
+                    allData = raw.filter(r => r[latKey] && r[lonKey]).map(r => ({
+                        ...r,
+                        Latitude: parseFloat(r[latKey]),
+                        Longitude: parseFloat(r[lonKey]),
+                        // Store a clean Date Object for sorting
+                        DateObj: parseDate(r.Date),
+                        // Normalize Category (Default to 'Other' if not found)
+                        Category: categories[r.Category] ? r.Category : 'Other'
+                    }));
+
+                    // Sort: Newest First
+                    allData.sort((a, b) => (b.DateObj || 0) - (a.DateObj || 0));
+                    
+                    init(allData);
+                }
+            }
         });
 
         function init(data) {
@@ -143,74 +170,59 @@
             renderFilters(data);
         }
 
-        // --- FILTER LOGIC ---
+        // --- FILTER BY DATE ---
         function filterByDate() {
-            const inputDate = document.getElementById('date-picker').value;
-            
-            if (!inputDate) {
-                // If date is cleared, show everything
-                init(allData);
-                return;
-            }
-
-            // Convert input to comparable string
-            const selectedDate = new Date(inputDate).toDateString();
+            const input = document.getElementById('date-picker').value; // YYYY-MM-DD
+            if (!input) return init(allData);
 
             const filtered = allData.filter(d => {
-                const rowDate = new Date(d.Date).toDateString();
-                return rowDate === selectedDate;
+                if (!d.DateObj) return false;
+                // Convert both to YYYY-MM-DD for safe comparison
+                const rowDate = d.DateObj.toISOString().split('T')[0]; 
+                return rowDate === input;
             });
 
-            // Update UI with filtered data
             renderMap(filtered);
             renderList(filtered);
             renderStats(filtered);
         }
 
         function resetAll() {
-            document.getElementById('date-picker').value = ""; // Clear date input
-            init(allData); // Show full dataset
+            document.getElementById('date-picker').value = "";
+            init(allData);
         }
 
-        function filterCategory(cat, btn) {
-            // Visual update
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            // Logic update
-            // Note: If a date is selected, we should technically filter by BOTH date and category.
-            // For simplicity, this button resets to "All Dates + Specific Category".
-            // If you want to combine them, logic needs to be more complex.
-            
+        function filterCategory(cat) {
             const filtered = allData.filter(d => d.Category === cat);
             renderMap(filtered);
             renderList(filtered);
             renderStats(filtered);
         }
 
-        // --- RENDER FUNCTIONS ---
+        // --- RENDERERS ---
         function renderMap(data) {
             markers.clearLayers();
             data.forEach(d => {
-                const type = icons[d.Category] ? d.Category : 'Other';
-                const style = icons[type];
+                const style = categories[d.Category] || categories['Other'];
                 
                 const icon = L.divIcon({
                     className: 'custom-icon',
-                    html: `<div class="custom-marker" style="background:${style.col}; width:30px; height:30px;"><i class="fas ${style.icon}"></i></div>`,
-                    iconSize: [30, 30], iconAnchor: [15, 15]
+                    html: `<div class="custom-marker" style="background:${style.col}; width:28px; height:28px;">${style.icon}</div>`,
+                    iconSize: [28, 28], iconAnchor: [14, 14]
                 });
 
                 const marker = L.marker([d.Latitude, d.Longitude], {icon: icon}).addTo(markers);
                 
-                // Popup Content
+                // POPUP CONTENT (Description Removed)
                 marker.bindPopup(`
-                    <div style="font-family:'Hind Siliguri', sans-serif; min-width:200px;">
+                    <div style="min-width:200px;">
                         <b style="font-size:14px;">${d.Title}</b><br>
-                        <hr style="margin:5px 0; border:0; border-top:1px solid #eee;">
-                        <span style="color:${style.col}; font-weight:bold; font-size:12px;">${d.Category}</span><br>
-                        <span style="font-size:12px; color:#666"><i class="far fa-clock"></i> ${new Date(d.Date).toLocaleDateString()}</span><br>
-                        <a href="${d.SourceUrl}" target="_blank" style="display:inline-block; margin-top:5px; text-decoration:none; color:#3b82f6; font-weight:600; font-size:12px;">Read News →</a>
+                        <div style="margin-top:5px; font-size:12px; color:#555;">
+                            ${style.icon} ${style.label}<br>
+                            📅 ${formatDateDisplay(d.DateObj)}<br>
+                            📍 ${d.Address || "Bangladesh"}
+                        </div>
+                        <a href="${d.SourceUrl}" target="_blank" style="display:block; margin-top:8px; text-decoration:none; color:#3b82f6; font-weight:700; font-size:12px;">Read Full News →</a>
                     </div>
                 `);
             });
@@ -222,19 +234,16 @@
 
         function renderFilters(data) {
             const counts = {};
-            // Count categories based on CURRENT view
             data.forEach(d => counts[d.Category] = (counts[d.Category] || 0) + 1);
             
             const container = document.getElementById('filters');
+            container.innerHTML = `<button class="filter-btn active" onclick="resetAll()"><span>📋 All Crimes</span> <span>${allData.length}</span></button>`;
             
-            // "Show All" button
-            container.innerHTML = `<button class="filter-btn active" onclick="resetAll()"><span><i class="fas fa-globe"></i> Show All</span> <span>${allData.length}</span></button>`;
-            
-            // Category buttons
-            Object.keys(icons).forEach(key => {
-                // Only show buttons if that crime exists in the data
-                if(counts[key]) {
-                    container.innerHTML += `<button class="filter-btn" onclick="filterCategory('${key}', this)"><span><i class="fas ${icons[key].icon}" style="color:${icons[key].col}"></i> ${key}</span> <span>${counts[key]}</span></button>`;
+            Object.keys(categories).forEach(key => {
+                if (key === 'All') return;
+                if (counts[key]) {
+                    const c = categories[key];
+                    container.innerHTML += `<button class="filter-btn" onclick="filterCategory('${key}')"><span>${c.icon} ${c.label}</span> <span>${counts[key]}</span></button>`;
                 }
             });
         }
@@ -242,27 +251,20 @@
         function renderList(data) {
             const container = document.getElementById('list');
             container.innerHTML = "";
-            
-            // Show only top 50 to prevent lag
             data.slice(0, 50).forEach(d => {
-                const type = icons[d.Category] ? d.Category : 'Other';
-                const style = icons[type];
-                
+                const style = categories[d.Category] || categories['Other'];
                 const el = document.createElement('div');
                 el.className = 'card';
                 el.style.borderLeftColor = style.col;
                 el.innerHTML = `
-                    <h4 style="color:white;">${d.Title}</h4>
-                    <span>
-                        <i class="far fa-clock"></i> ${new Date(d.Date).toLocaleDateString()} • ${d.Address || "Bangladesh"}
-                    </span>`;
-                
-                // Click card to fly to map location
+                    <h4>${d.Title}</h4>
+                    <span>${style.icon} ${formatDateDisplay(d.DateObj)} • ${d.Address || "Bangladesh"}</span>
+                `;
                 el.onclick = () => {
-                    map.setView([d.Latitude, d.Longitude], 14);
-                    // Optional: open popup automatically
+                    map.setView([d.Latitude, d.Longitude], 15);
                     markers.eachLayer(layer => {
-                        if (layer.getLatLng().lat == d.Latitude && layer.getLatLng().lng == d.Longitude) {
+                        const latLng = layer.getLatLng();
+                        if (latLng.lat === d.Latitude && latLng.lng === d.Longitude) {
                             layer.openPopup();
                         }
                     });
@@ -273,5 +275,3 @@
     </script>
 </body>
 </html>
-
-
