@@ -91,10 +91,7 @@
     
     <script>
         // --- CONFIGURATION ---
-        // 1. Paste your Google CSV link inside the quotes below:
         const BASE_LINK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRhqyqUla2HyfJrO3I0k-i513-8A44ds7evsfZI4icLybMO66cdxC-o-mWp54fKhra8nzXbFH3O4i7_/pub?output=csv";
-        
-        // 2. FORCE REFRESH + PROXY
         const FRESH_LINK = BASE_LINK + "&t=" + new Date().getTime();
         const SHEET_URL = "https://corsproxy.io/?" + encodeURIComponent(FRESH_LINK);
 
@@ -121,24 +118,21 @@
         // --- SMART DATE PARSER ---
         function parseSmartDate(dateStr) {
             if (!dateStr) return null;
-            
-            // 1. Try standard conversion first
             let d = new Date(dateStr);
             if (!isNaN(d.getTime())) return d;
-
-            // 2. If that fails, try parsing "DD/MM/YYYY" manually (Bangla Format)
-            // Example: "17/02/2026" or "17-02-2026"
+            
+            // Try DD/MM/YYYY (Bangla/UK format)
             const parts = dateStr.match(/(\d+)[/-](\d+)[/-](\d+)/);
             if (parts) {
-                // parts[1] is Day, parts[2] is Month, parts[3] is Year
                 d = new Date(parts[3], parts[2] - 1, parts[1]);
                 if (!isNaN(d.getTime())) return d;
             }
-            return null; // Give up
+            return null;
         }
 
         function formatDateDisplay(dateObj) {
             if (!dateObj) return "Unknown Date";
+            // Returns: "17 Feb 2026"
             return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
@@ -149,39 +143,52 @@
                 const raw = results.data;
                 if(raw.length === 0) return;
 
-                // 1. AUTO-DETECT COLUMN NAMES (The "Universal Translator")
                 const keys = Object.keys(raw[0]);
+                
+                // --- SUPER SMART COLUMN FINDER ---
+                // This function looks for flexible names (ignoring case and typos)
                 const findKey = (str) => keys.find(k => k.toLowerCase().trim().includes(str));
+                
+                // Specific finder for Address to catch "Adress" (typo) or "Location"
+                const addrKey = keys.find(k => {
+                    const n = k.toLowerCase().trim();
+                    return n.includes("address") || n.includes("adress") || n.includes("location") || n.includes("place");
+                });
 
-                const latKey = findKey("lat");       // Finds "Lat", "Latitude", "LATITUDE"
-                const lonKey = findKey("lon");       // Finds "Long", "Longitude", "lng"
-                const titleKey = findKey("title");   // Finds "Title", "Headline"
-                const dateKey = findKey("date");     // Finds "Date", "Time"
-                const catKey = findKey("cat");       // Finds "Category", "Catagory", "Cat"
-                const addrKey = findKey("address");  // Finds "Address", "Location"
-                const urlKey = findKey("url");       // Finds "SourceUrl", "Link"
+                const latKey = findKey("lat");
+                const lonKey = findKey("lon");
+                const titleKey = findKey("title");
+                const dateKey = findKey("date");
+                const catKey = findKey("cat"); // Catches "Category", "Catagory"
+                const urlKey = findKey("url");
+
+                console.log("Found Address Column:", addrKey); // Check Console if it still fails!
 
                 if (latKey && lonKey) {
                     allData = raw.filter(r => r[latKey] && r[lonKey]).map(r => {
-                        // Clean the category name (remove spaces & fix capitalization)
+                        // 1. Clean Category
                         let cleanCat = r[catKey] ? r[catKey].trim() : 'Other';
                         cleanCat = cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1);
 
-                        // Parse the date properly
+                        // 2. Parse Date
                         const cleanDate = parseSmartDate(r[dateKey]);
+
+                        // 3. Clean Address (If empty, say 'Bangladesh')
+                        // Note: If your SHEET cell says 'Bangladesh', this will show 'Bangladesh'.
+                        const cleanAddr = r[addrKey] ? r[addrKey] : "Bangladesh";
 
                         return {
                             Latitude: parseFloat(r[latKey]),
                             Longitude: parseFloat(r[lonKey]),
                             Title: r[titleKey] || "Untitled Incident",
-                            DateObj: cleanDate, // Object for sorting/filtering
-                            Category: categories[cleanCat] ? cleanCat : 'Other', // Match against our list
-                            Address: r[addrKey] || "Bangladesh",
+                            DateObj: cleanDate,
+                            Category: categories[cleanCat] ? cleanCat : 'Other',
+                            Address: cleanAddr,
                             SourceUrl: r[urlKey] || "#"
                         };
                     });
 
-                    // Sort: Newest First
+                    // Sort Newest First
                     allData.sort((a, b) => (b.DateObj || 0) - (a.DateObj || 0));
                     
                     init(allData);
@@ -202,7 +209,6 @@
 
             const filtered = allData.filter(d => {
                 if (!d.DateObj) return false;
-                // Convert both to YYYY-MM-DD for comparison
                 return d.DateObj.toISOString().split('T')[0] === input;
             });
 
@@ -296,3 +302,4 @@
     </script>
 </body>
 </html>
+
