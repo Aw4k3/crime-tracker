@@ -68,14 +68,15 @@
             <h1><i class="fas fa-map-marked-alt" style="color:#ef4444"></i> Crime Map BD</h1>
         </div>
         <div class="content">
-            <div class="date-control">
-                <input type="date" id="date-picker" onchange="filterByDate()">
-                <button class="reset-btn" onclick="resetAll()"><i class="fas fa-sync-alt"></i></button>
+            
+            <div style="background:#1f2937; padding:15px; border-radius:8px; border:1px solid #374151; margin-bottom:15px; text-align:center;">
+                <span style="color:#9ca3af; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">Current Report</span><br>
+                <span id="current-date" style="color:white; font-size:1.2rem; font-weight:700;">Loading...</span>
             </div>
 
             <div class="stats-box">
                 <span class="stats-num" id="total-count">0</span>
-                <span style="font-size:0.7rem; text-transform:uppercase; color:var(--text-sub);">Visible Incidents</span>
+                <span style="font-size:0.7rem; text-transform:uppercase; color:var(--text-sub);">Recent Incidents</span>
             </div>
             
             <div id="filters"></div>
@@ -91,9 +92,17 @@
     
     <script>
         // --- CONFIGURATION ---
-        const BASE_LINK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRhqyqUla2HyfJrO3I0k-i513-8A44ds7evsfZI4icLybMO66cdxC-o-mWp54fKhra8nzXbFH3O4i7_/pub?output=csv";
+        // 1. Paste your Google CSV link inside the quotes below:
+        const BASE_LINK = "PASTE_YOUR_GOOGLE_CSV_LINK_HERE";
+        
+        // 2. FORCE REFRESH + PROXY
         const FRESH_LINK = BASE_LINK + "&t=" + new Date().getTime();
         const SHEET_URL = "https://corsproxy.io/?" + encodeURIComponent(FRESH_LINK);
+
+        // --- SET CURRENT DATE HEADER ---
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date').innerText = today.toLocaleDateString('en-US', options);
 
         // --- MAP SETUP ---
         const map = L.map('map', {zoomControl: false}).setView([23.8103, 90.4125], 7);
@@ -132,7 +141,6 @@
 
         function formatDateDisplay(dateObj) {
             if (!dateObj) return "Unknown Date";
-            // Returns: "17 Feb 2026"
             return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
@@ -145,36 +153,25 @@
 
                 const keys = Object.keys(raw[0]);
                 
-                // --- SUPER SMART COLUMN FINDER ---
-                // This function looks for flexible names (ignoring case and typos)
+                // --- SMART COLUMN FINDER ---
                 const findKey = (str) => keys.find(k => k.toLowerCase().trim().includes(str));
-                
-                // Specific finder for Address to catch "Adress" (typo) or "Location"
                 const addrKey = keys.find(k => {
                     const n = k.toLowerCase().trim();
-                    return n.includes("address") || n.includes("adress") || n.includes("location") || n.includes("place");
+                    return n.includes("address") || n.includes("adress") || n.includes("location");
                 });
 
                 const latKey = findKey("lat");
                 const lonKey = findKey("lon");
                 const titleKey = findKey("title");
                 const dateKey = findKey("date");
-                const catKey = findKey("cat"); // Catches "Category", "Catagory"
+                const catKey = findKey("cat"); 
                 const urlKey = findKey("url");
-
-                console.log("Found Address Column:", addrKey); // Check Console if it still fails!
 
                 if (latKey && lonKey) {
                     allData = raw.filter(r => r[latKey] && r[lonKey]).map(r => {
-                        // 1. Clean Category
                         let cleanCat = r[catKey] ? r[catKey].trim() : 'Other';
                         cleanCat = cleanCat.charAt(0).toUpperCase() + cleanCat.slice(1);
-
-                        // 2. Parse Date
                         const cleanDate = parseSmartDate(r[dateKey]);
-
-                        // 3. Clean Address (If empty, say 'Bangladesh')
-                        // Note: If your SHEET cell says 'Bangladesh', this will show 'Bangladesh'.
                         const cleanAddr = r[addrKey] ? r[addrKey] : "Bangladesh";
 
                         return {
@@ -203,22 +200,7 @@
             renderFilters(data);
         }
 
-        function filterByDate() {
-            const input = document.getElementById('date-picker').value; 
-            if (!input) return init(allData);
-
-            const filtered = allData.filter(d => {
-                if (!d.DateObj) return false;
-                return d.DateObj.toISOString().split('T')[0] === input;
-            });
-
-            renderMap(filtered);
-            renderList(filtered);
-            renderStats(filtered);
-        }
-
         function resetAll() {
-            document.getElementById('date-picker').value = "";
             init(allData);
         }
 
@@ -265,7 +247,7 @@
             data.forEach(d => counts[d.Category] = (counts[d.Category] || 0) + 1);
             
             const container = document.getElementById('filters');
-            container.innerHTML = `<button class="filter-btn active" onclick="resetAll()"><span>📋 All Crimes</span> <span>${allData.length}</span></button>`;
+            container.innerHTML = `<button class="filter-btn active" onclick="resetAll()"><span>📋 All Recent</span> <span>${allData.length}</span></button>`;
             
             Object.keys(categories).forEach(key => {
                 if (counts[key]) {
@@ -278,6 +260,7 @@
         function renderList(data) {
             const container = document.getElementById('list');
             container.innerHTML = "";
+            // SHOW TOP 50 RECENT
             data.slice(0, 50).forEach(d => {
                 const style = categories[d.Category] || categories['Other'];
                 const el = document.createElement('div');
@@ -302,4 +285,5 @@
     </script>
 </body>
 </html>
+
 
