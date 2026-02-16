@@ -88,13 +88,12 @@
         // --- CONFIGURATION ---
         // 1. Paste your Google CSV link inside the quotes below:
         const BASE_LINK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRhqyqUla2HyfJrO3I0k-i513-8A44ds7evsfZI4icLybMO66cdxC-o-mWp54fKhra8nzXbFH3O4i7_/pub?output=csv";
-
-        // 2. FORCE REFRESH: This adds a random number to the link so Google gives us the NEWEST data
-        const FRESH_LINK = BASE_LINK + "&t=" + new Date().getTime();
-
-        // 3. Proxy Wrapper
-        const SHEET_URL = "https://api.allorigins.win/raw?url=" + encodeURIComponent(FRESH_LINK);
         
+        // 2. FORCE REFRESH: Adds a timestamp so you get the NEWEST data
+        const FRESH_LINK = BASE_LINK + "&t=" + new Date().getTime();
+        
+        // 3. PROXY WRAPPER (NEW: Using corsproxy.io because allorigins is down)
+        const SHEET_URL = "https://corsproxy.io/?" + encodeURIComponent(FRESH_LINK);
         // --- MAP SETUP ---
         const map = L.map('map', {zoomControl: false}).setView([23.8103, 90.4125], 7);
         L.control.zoom({position: 'topright'}).addTo(map);
@@ -274,4 +273,5 @@
     </script>
 </body>
 </html>
+
 
