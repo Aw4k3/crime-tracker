@@ -100,7 +100,7 @@
             download: true, header: true,
             complete: (results) => {
                 // Filter out empty rows and rows without location
-                allData = results.data.filter(r => r.Lat && r.Long);
+                allData = results.data.filter(r => r.Latitude && r.Longitude);
                 
                 // Sort by date (newest first)
                 allData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
@@ -151,7 +151,7 @@
                     iconSize: [30, 30], iconAnchor: [15, 15]
                 });
 
-                const marker = L.marker([d.Lat, d.Long], {icon: icon}).addTo(markers);
+                const marker = L.marker([d.Latitude, d.Longitude], {icon: icon}).addTo(markers);
                 marker.bindPopup(`
                     <div style="font-family:'Hind Siliguri', sans-serif;">
                         <b>${d.Title}</b><br>
@@ -224,3 +224,4 @@
     </script>
 </body>
 </html>
+
